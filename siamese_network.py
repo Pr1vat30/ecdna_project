@@ -150,52 +150,26 @@ class BioDataset(Dataset):
 # 2. MODEL
 # ==========================================
 
-class ResNetSiameseBioNet(nn.Module):
-    def __init__(self, input_dims_dict, d_model=256, embed_dim=128, num_classes=5, dropout_rate=0.3):
-        super(ResNetSiameseBioNet, self).__init__()
+class SiameseBioNet(nn.Module):
+    def __init__(self, input_dim, embed_dim, num_classes):
+        super(SiameseBioNet, self).__init__()
 
-        # 1. Calcola la dimensione input
-        total_input_dim = sum(input_dims_dict.values())
-
-        # 2. Proiezione Iniziale
-        self.input_proj = nn.Sequential(
-            nn.Linear(total_input_dim, d_model),
-            nn.BatchNorm1d(d_model),
-            nn.GELU()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, embed_dim)
         )
 
-        # 3. Blocco Residuale 1
-        self.res_block1 = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.BatchNorm1d(d_model),
-            nn.GELU(),
-            nn.Dropout(dropout_rate),
-            nn.Linear(d_model, d_model),
-            nn.BatchNorm1d(d_model)
-        )
-
-        # 4. Blocco Residuale 2
-        self.res_block2 = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.BatchNorm1d(d_model),
-            nn.GELU(),
-            nn.Dropout(dropout_rate),
-            nn.Linear(d_model, d_model),
-            nn.BatchNorm1d(d_model)
-        )
-
-        # 5. Layer Finale per Embedding
-        self.fc_embed = nn.Sequential(
-            nn.Linear(d_model, embed_dim),
-            nn.BatchNorm1d(embed_dim)
-        )
-
-        # 6. Classificatore Ausiliario
         self.classifier = nn.Sequential(
-            nn.Linear(embed_dim, 64),
-            nn.GELU(),
-            nn.Dropout(dropout_rate),
-            nn.Linear(64, num_classes)
+            nn.Linear(embed_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, num_classes)
         )
 
     def forward_features(self, x_dict):
@@ -203,14 +177,8 @@ class ResNetSiameseBioNet(nn.Module):
         features = [x_dict[k] for k in x_dict.keys()]
         x = torch.cat(features, dim=1)
 
-        # Passaggio Rete
-        x = self.input_proj(x)
-
-        # Skip Connections (Residui)
-        x = F.gelu(x + self.res_block1(x))
-        x = F.gelu(x + self.res_block2(x))
-
-        return self.fc_embed(x)
+        # Usa l'encoder definito nell'__init__
+        return self.encoder(x)
 
     def forward(self, x_dict):
         raw_embedding = self.forward_features(x_dict)
@@ -460,12 +428,11 @@ if __name__ == "__main__":
         "learning_rate": 1e-3,
         "weight_decay": 1e-5,
 
-        "d_model": 256,
         "embed_dim": 128,
 
-        "alpha": 0.2,
-        "beta": 0.8,
-        "triplet_margin": 0.5,
+        "alpha": 0.5,
+        "beta": 0.5,
+        "triplet_margin": 0.7,
 
         "num_test_pairs": 2000
     }
@@ -496,9 +463,8 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=CONFIG["batch_size"], shuffle=False)
 
     # Istanziamento del nuovo modello MLP
-    model = ResNetSiameseBioNet(
-        input_dims_dict=builder.input_dims,
-        d_model=CONFIG["d_model"],
+    model = SiameseBioNet(
+        input_dim=builder.input_dims["all_features"],
         embed_dim=CONFIG["embed_dim"],
         num_classes=builder.num_class
     ).to(device)
@@ -517,7 +483,7 @@ if __name__ == "__main__":
     )
 
     print("\n--- Inizio Addestramento ---")
-    trainer.fit(epochs=CONFIG["epochs"])
+    trainer.fit(epochs=CONFIG["epochs"], scheduler=scheduler)
 
     print("\n--- Inizio Test ---")
     tester = SiameseTester(
