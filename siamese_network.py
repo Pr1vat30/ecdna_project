@@ -1,9 +1,8 @@
-import ast
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
 from sklearn.metrics import accuracy_score, auc, roc_curve
@@ -27,7 +26,6 @@ import seaborn as sns
 def dict_to_device(batch_dict, device):
     """Sposta un dizionario di tensori sul device specificato (CPU/GPU)"""
     return {k: v.to(device) for k, v in batch_dict.items()}
-
 
 # ==========================================
 # 1. DATASET
@@ -148,13 +146,8 @@ class BioDataset(Dataset):
     def _get_item_dict(self, index):
         return {k: v[index] for k, v in self.X.items()}
 
-
 # ==========================================
-# 2. MODEL (MLP / Feature Concatenation)
-# ==========================================
-
-# ==========================================
-# 2. MODEL (Tabular ResNet)
+# 2. MODEL
 # ==========================================
 
 class ResNetSiameseBioNet(nn.Module):
@@ -228,7 +221,6 @@ class ResNetSiameseBioNet(nn.Module):
     def get_embedding(self, x_dict):
         raw_embedding = self.forward_features(x_dict)
         return F.normalize(raw_embedding, p=2, dim=1)
-
 
 # ==========================================
 # 3. TRAIN & TEST LOOPS
@@ -315,7 +307,6 @@ class SiameseTrainer:
 
             if scheduler:
                 scheduler.step(val_loss)  # Riduce il LR se la Val Loss non scende per 5 epoche
-
 
 
 class SiameseTester:
@@ -452,14 +443,13 @@ class SiameseTester:
         print("Plot salvato con successo come 'tsne_embeddings_test.png'.")
         plt.show()
 
-
 # ==========================================
 # 4. MAIN
 # ==========================================
 
 if __name__ == "__main__":
     CONFIG = {
-        "path_to_data": "./datasets/eccDNA_sequences5.csv",
+        "path_to_data": "./datasets/eccDNA_sequences_def.csv",
         "min_samples": 1000,
         "test_size": 0.3,
         "val_size": 0.5,

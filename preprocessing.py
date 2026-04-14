@@ -263,11 +263,11 @@ for disease, count in disease_counts.items():
 # 3. Salvataggio Risultati
 print("Salvataggio dei file CSV...")
 df_seq = pd.DataFrame(records)
-df_seq.to_csv("./datasets/eccDNA_sequences5.csv", index=False)
+df_seq.to_csv("./datasets/eccDNA_sequences_def.csv", index=False)
 
 if skipped:
     df_skipped = pd.DataFrame(skipped)
-    df_skipped.to_csv("./datasets/eccDNA_skipped.csv", index=False)
+    df_skipped.to_csv("./datasets/eccDNA_skipped_def.csv", index=False)
 
 print(f"Completato! Salvate {len(records)} sequenze.")
 print(f"Righe saltate o con errore: {len(skipped)}")
