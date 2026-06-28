@@ -18,7 +18,7 @@ def slice_dataset(dataset, feature_indices):
     """
     return eccDNADataset(dataset.features[:, feature_indices], dataset.labels)
 
-def get_top_shap_features(model, config, train_dataset, test_dataset, num_features=20):
+def get_top_shap_features(model, config, train_dataset, test_dataset, num_features=20, save_name="mlp_baseline_shap.png"):
     """
     Runs SHAP explainability on the model to select the top num_features.
     """
@@ -32,7 +32,8 @@ def get_top_shap_features(model, config, train_dataset, test_dataset, num_featur
         test_features=test_features_np,
         num_bg=100,
         num_exp=50,
-        save_dir="datasets/plots"
+        save_dir="datasets/plots",
+        save_name=save_name
     )
     
     if isinstance(shap_values, list):
@@ -172,7 +173,21 @@ def run_nn_experiment(config, train_ds, val_ds, test_ds, feature_cols, name, mod
     except Exception:
         report_text_det = classification_report(test_labels, all_preds, zero_division=0.0)
     print(report_text_det)
-    
+    # Run SHAP explanation if requested or for specific experiments
+    if name in ["MLP_info_theoretic", "CNN_baseline", "CNN_info_theoretic"]:
+        print(f"\nComputing SHAP attributions for {name}...")
+        explainer = eccDNAExplainer(model, temp_config, feature_cols)
+        X_train_sliced = train_sliced.features.numpy()
+        X_test_sliced = test_sliced.features.numpy()
+        explainer.explain_predictions(
+            train_features=X_train_sliced,
+            test_features=X_test_sliced,
+            num_bg=100,
+            num_exp=50,
+            save_dir="datasets/plots",
+            save_name=f"{name.lower()}_shap.png"
+        )
+        
     return {
         "Accuracy": accuracy,
         "Recall@1": retrieval_metrics["Recall@1"],
@@ -220,7 +235,7 @@ def main():
         baseline_model.load_state_dict(torch.load(mlp_baseline_path, map_location=config.device))
         
     baseline_model = baseline_model.to(config.device)
-    top_20_shap = get_top_shap_features(baseline_model, config, train_dataset, test_dataset, num_features=20)
+    top_20_shap = get_top_shap_features(baseline_model, config, train_dataset, test_dataset, num_features=20, save_name="mlp_baseline_shap.png")
     
     # 3. Define the three feature subsets
     feature_subsets = {

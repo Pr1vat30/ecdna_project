@@ -15,7 +15,7 @@ class eccDNAExplainer:
         self.feature_names = feature_names
         self.device = config.device
         
-    def explain_predictions(self, train_features, test_features, num_bg=100, num_exp=50, save_dir="datasets/plots"):
+    def explain_predictions(self, train_features, test_features, num_bg=100, num_exp=50, save_dir="datasets/plots", save_name="shap_summary_plot.png"):
         self.model.eval()
         
         # Selection of background reference subset
@@ -54,7 +54,7 @@ class eccDNAExplainer:
         )
         plt.title("SHAP Feature Importance (Softmax Classification Head)", fontsize=14, fontweight='bold')
         plt.tight_layout()
-        plt.savefig(os.path.join(save_dir, "shap_summary_plot.png"), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(save_dir, save_name), dpi=300, bbox_inches='tight')
         plt.close()
         
         return shap_values, exp_data_np
